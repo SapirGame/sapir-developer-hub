@@ -98,16 +98,57 @@ function agentsPage(){return `${heading('AI / CORPORATE STANDARDS','AI Agents','
  <div class="grid-equal"><section class="card"><div class="section-header"><h2 class="section-title">Проекты на компьютере</h2><button class="btn btn-quiet btn-small" data-modal="add-project">+ Добавить проект</button></div>${state.projects.map((p,i)=>`<div class="project-row"><div class="flex"><span class="project-icon">${icons('folder')}</span><div><div class="project-name">${escapeHtml(p.name)}</div><div class="project-path">${escapeHtml(p.path)}</div></div></div><div><div class="project-status ${p.version===state.agentLatest?'':'outdated'}">${p.version?'v'+p.version:'Не установлен'}</div><button class="text-link" style="margin-top:7px" data-project-install="${i}">${p.version?'Обновить':'Установить'}</button></div></div>`).join('')}<div class="notice">${icons('info')} В прототипе установка демонстрационная: файлы на диске не изменяются.</div></section>
  <section><div class="section-header"><h2 class="section-title">Содержимое корпоративного файла</h2><button class="text-link" data-copy-agents>${icons('copy')} Копировать</button></div><div class="code-panel"><div class="code-bar"><span>AGENTS.md</span><span>Markdown · readonly</span></div><pre>${escapeHtml(corporateAgents)}</pre></div><p class="subheading" style="margin-top:12px">Claude Code: отдельный CLAUDE.md импортирует основной AGENTS.md, без дублирования правил.</p></section></div>`;}
 function promptText(){let type=({implement:'Implement task',review:'Code review',bug:'Investigate bug'})[state.promptType];const task=tasks.find(t=>t.id===state.promptTask)||tasks[0];const selected=docs.filter(d=>state.promptDocs.has(d.id));return `# SAPIR GAME / ${type.toUpperCase()}\n\n## Corporate instructions\nFollow the project's AGENTS.md and the architecture conventions below.\n\n## Task\nID: ${task.id}\nProject: ${task.project}\nTitle: ${task.title}\nDescription: ${task.description}\n\n## Relevant architecture\n${selected.map(d=>`### ${d.title}\n${d.body.join('\n')}`).join('\n\n')||'(No documents selected)'}\n\n## Expected output\n- Explain your proposed changes before implementation.\n- Identify affected components and dependencies.\n- Follow Unity project conventions.\n- Explain how the result should be tested.\n`}
+function checkbox(attributes, checked){
+  return `<span class="check-control">
+    <input type="checkbox" ${attributes} ${checked?'checked':''}>
+    <span class="check-visual" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="M6.5 12.5l3.5 3.5 7.5-8" pathLength="1"/></svg>
+      <span class="control-pulse"></span>
+    </span>
+  </span>`;
+}
 function promptsPage(){return `${heading('AI / PROMPT BUILDER','Prompt Builder','Собирает контекст по шаблону без нейросетевых API. Перед отправкой во внешний сервис проверьте содержимое.',demo())}
-<div class="prompt-layout"><section class="card"><h2 class="section-title" style="margin-bottom:22px">Настройка контекста</h2><div class="form-group"><label class="form-label" for="prompt-type">Назначение</label><select class="select" id="prompt-type" style="width:100%"><option value="implement" ${state.promptType==='implement'?'selected':''}>Реализовать задачу</option><option value="review" ${state.promptType==='review'?'selected':''}>Code Review</option><option value="bug" ${state.promptType==='bug'?'selected':''}>Разобрать ошибку</option></select></div><div class="form-group"><label class="form-label" for="prompt-task">Задача ClickUp</label><select class="select" id="prompt-task" style="width:100%">${tasks.map(t=>`<option value="${t.id}" ${state.promptTask===t.id?'selected':''}>${t.id}: ${escapeHtml(t.title)}</option>`).join('')}</select></div><div class="form-group"><span class="form-label">Документация Outline</span>${docs.slice(0,5).map(d=>`<label class="check-row"><input type="checkbox" data-prompt-doc="${d.id}" ${state.promptDocs.has(d.id)?'checked':''}>${escapeHtml(d.title)}</label>`).join('')}</div><div class="notice">${icons('lock')} Проверяйте корпоративные данные, прежде чем вставлять промпт в облачную AI-систему. Hub сам ничего не отправляет.</div></section><section class="card"><div class="section-header"><h2 class="section-title">Готовый промпт</h2><button class="btn btn-primary" data-copy-prompt>${icons('copy')} Скопировать</button></div><pre id="prompt-preview" class="prompt-output">${escapeHtml(promptText())}</pre><p class="subheading" style="margin-top:14px">Вывод формируется обычными шаблонами. Никаких AI-запросов.</p></section></div>`;}
-function settingsPage(){return `${heading('SYSTEM / PREFERENCES','Настройки','Подключение существующих корпоративных аккаунтов и локальные параметры Hub.',demo())}<div class="grid-equal"><section class="card"><div class="section-header"><h2 class="section-title">Интеграции</h2>${pill('Не подключено','todo')}</div><div class="settings-list">${[{name:'ClickUp',initial:'CU',cls:'click',desc:'Задачи, статусы и комментарии'},{name:'Outline',initial:'O',cls:'',desc:'Wiki, документы, индекс поиска'},{name:'Slack',initial:'S',cls:'slack',desc:'Новости отдела и сообщения'}].map(s=>`<div class="setting-row"><span class="setting-logo ${s.cls}">${s.initial}</span><div class="setting-body"><strong>${s.name}</strong><p>${s.desc}</p></div><button class="btn btn-quiet btn-small" data-modal="connect">Подключить</button></div>`).join('')}</div></section><section class="card"><h2 class="section-title" style="margin-bottom:18px">Локальное приложение</h2><div class="setting-help"><h3>Обновления программы</h3><p>Проверка новых версий через GitHub Releases. В релизе присутствуют установщик и подписанные updater-файлы.</p><h3>Корпоративные инструкции</h3><p>Отдельная проверка AGENTS.md в Git. Изменение документа не требует нового релиза приложения.</p><h3>Хранение данных</h3><p>SQLite и поисковый индекс находятся локально. Токены корпоративных сервисов должны храниться в защищённом хранилище ОС.</p></div></section></div><div class="card" style="margin-top:18px"><h2 class="section-title" style="margin-bottom:13px">Принципы безопасности</h2><div class="setting-description"><div class="setting-help"><h3>Нет отдельного аккаунта Hub</h3><p>Пользователь подключает ClickUp, Outline и Slack со своими правами. Общие административные ключи запрещены.</p></div><div class="setting-help"><h3>Чтение локальными агентами</h3><p>Экспорт Markdown и AGENTS.md. При добавлении HTTP API нужны ограничения доступа, origin-проверки и защита токенов.</p></div></div></div>`;}
+<div class="prompt-layout"><section class="card"><h2 class="section-title" style="margin-bottom:22px">Настройка контекста</h2><div class="form-group"><label class="form-label" for="prompt-type">Назначение</label><select class="select" id="prompt-type" style="width:100%"><option value="implement" ${state.promptType==='implement'?'selected':''}>Реализовать задачу</option><option value="review" ${state.promptType==='review'?'selected':''}>Code Review</option><option value="bug" ${state.promptType==='bug'?'selected':''}>Разобрать ошибку</option></select></div><div class="form-group"><label class="form-label" for="prompt-task">Задача ClickUp</label><select class="select" id="prompt-task" style="width:100%">${tasks.map(t=>`<option value="${t.id}" ${state.promptTask===t.id?'selected':''}>${t.id}: ${escapeHtml(t.title)}</option>`).join('')}</select></div><div class="form-group"><span class="form-label">Документация Outline</span>${docs.slice(0,5).map(d=>`<label class="check-row">${checkbox(`data-prompt-doc="${d.id}"`,state.promptDocs.has(d.id))}${escapeHtml(d.title)}</label>`).join('')}</div><div class="notice">${icons('lock')} Проверяйте корпоративные данные, прежде чем вставлять промпт в облачную AI-систему. Hub сам ничего не отправляет.</div></section><section class="card"><div class="section-header"><h2 class="section-title">Готовый промпт</h2><button class="btn btn-primary" data-copy-prompt>${icons('copy')} Скопировать</button></div><pre id="prompt-preview" class="prompt-output">${escapeHtml(promptText())}</pre><p class="subheading" style="margin-top:14px">Вывод формируется обычными шаблонами. Никаких AI-запросов.</p></section></div>`;}
+function appearanceSettings(){
+  const sapphire=`<svg viewBox="0 0 24 20" aria-hidden="true" class="motion-sapphire">
+    <path fill="#5978e5" d="M5 1h14l4 5-11 13L1 6z"/>
+    <path fill="#afc1ff" d="M5 1h14l-4 5H9z"/>
+    <path fill="#7897fc" d="M1 6h8l3 13z"/>
+    <path fill="#1239c3" d="M15 6h8L12 19z"/>
+    <path fill="#eef3ff" d="m14 2 1.3 3.1 3.7.9-3.7.9-1.3 3.1-.9-3.1-3.1-.9 3.1-.9z"/>
+  </svg>`;
+  const motionLabel=motionLabels[appearance.motion];
+  return `<section class="card appearance-settings" aria-labelledby="appearance-title">
+    <div class="section-header"><h2 class="section-title" id="appearance-title">Оформление и запуск</h2></div>
+    <label class="setting-row welcome-setting">
+      <span class="setting-body"><strong>Показывать приветствие при запуске</strong><small>Если выключено, Hub сразу открывает рабочую область.</small></span>
+      ${checkbox('id="welcome-preference"',appearance.welcome)}
+    </label>
+    <div class="setting-row motion-setting">
+      <label for="motion-preference"><strong>Анимации</strong></label>
+      <div class="motion-options" data-step="${appearance.motion}">
+        <span id="motion-current" aria-hidden="true">${motionLabel}</span>
+        <div class="motion-slider">
+          <input type="range" id="motion-preference" min="0" max="2" step="1" value="${appearance.motion}" aria-valuetext="${motionLabel}">
+          <span class="motion-track" aria-hidden="true">
+            <span class="motion-fill"></span>
+            <span class="motion-stops">${sapphire.repeat(3)}</span>
+            <span class="motion-thumb">${sapphire}<span class="control-pulse"></span></span>
+          </span>
+        </div>
+      </div>
+    </div>
+  </section>`;
+}
+function settingsPage(){return `${heading('SYSTEM / PREFERENCES','Настройки','Подключение существующих корпоративных аккаунтов и локальные параметры Hub.',demo())}${appearanceSettings()}<div class="grid-equal"><section class="card"><div class="section-header"><h2 class="section-title">Интеграции</h2>${pill('Не подключено','todo')}</div><div class="settings-list">${[{name:'ClickUp',initial:'CU',cls:'click',desc:'Задачи, статусы и комментарии'},{name:'Outline',initial:'O',cls:'',desc:'Wiki, документы, индекс поиска'},{name:'Slack',initial:'S',cls:'slack',desc:'Новости отдела и сообщения'}].map(s=>`<div class="setting-row"><span class="setting-logo ${s.cls}">${s.initial}</span><div class="setting-body"><strong>${s.name}</strong><p>${s.desc}</p></div><button class="btn btn-quiet btn-small" data-modal="connect">Подключить</button></div>`).join('')}</div></section><section class="card"><h2 class="section-title" style="margin-bottom:18px">Локальное приложение</h2><div class="setting-help"><h3>Обновления программы</h3><p>Проверка новых версий через GitHub Releases. В релизе присутствуют установщик и подписанные updater-файлы.</p><h3>Корпоративные инструкции</h3><p>Отдельная проверка AGENTS.md в Git. Изменение документа не требует нового релиза приложения.</p><h3>Хранение данных</h3><p>SQLite и поисковый индекс находятся локально. Токены корпоративных сервисов должны храниться в защищённом хранилище ОС.</p></div></section></div><div class="card" style="margin-top:18px"><h2 class="section-title" style="margin-bottom:13px">Принципы безопасности</h2><div class="setting-description"><div class="setting-help"><h3>Нет отдельного аккаунта Hub</h3><p>Пользователь подключает ClickUp, Outline и Slack со своими правами. Общие административные ключи запрещены.</p></div><div class="setting-help"><h3>Чтение локальными агентами</h3><p>Экспорт Markdown и AGENTS.md. При добавлении HTTP API нужны ограничения доступа, origin-проверки и защита токенов.</p></div></div></div>`;}
 const renderers = {home,tasks:tasksPage,knowledge,news:newsPage,agents:agentsPage,prompts:promptsPage,settings:settingsPage};
 const routeScroll = new Map();
 function navigate(route, origin){
   if(!Object.hasOwn(renderers,route)||route===state.route)return;
+  revealFromDock(byId('page'),null);
   routeScroll.set(state.route,window.scrollY);
   state.route=route;
-  render(Boolean(origin));
+  render(Boolean(origin) && motionLevel()===2);
   window.scrollTo({top:routeScroll.get(route)||0,behavior:'instant'});
   revealFromDock(byId('page'),origin);
 }
@@ -117,6 +158,7 @@ function render(fromDock=false){
   disposePrism();
   const page = byId('page');
   page.classList.toggle('route-enter', !fromDock && page.dataset.route !== state.route);
+  page.classList.toggle('dock-entry',fromDock);
   page.dataset.route = state.route;
   page.innerHTML=renderers[state.route]();
   const graph = page.querySelector('.graph-container');
@@ -131,7 +173,7 @@ function render(fromDock=false){
   moveDockMarker();
 }
 function moveDockMarker(){
-  const dock=document.querySelector('.dock');
+  const dock=workspaceDock;
   const active=dock.querySelector('.nav-item.active');
   if(!active)return;
   dock.style.setProperty('--marker-x',active.offsetLeft+'px');
@@ -153,12 +195,12 @@ function closeModal(){
   const shade=byId('overlay-root').firstElementChild;
   state.modal=null;
   state.searchOpen=false;
-  if (reduceMotion.matches) shade?.remove();
+  if (motionLevel()===0) shade?.remove();
   else if (shade) {
     shade.inert=true;
     shade.setAttribute('aria-hidden','true');
     shade.classList.add('exiting');
-    setTimeout(()=>shade.remove(),240);
+    setTimeout(()=>shade.remove(),motionLevel()===1 ? 180 : 240);
   }
   document.querySelector('.app-shell').inert=false;
   if (overlayTrigger?.isConnected) overlayTrigger.focus({preventScroll:true});
@@ -176,7 +218,7 @@ function handleClick(e){const target=e.target.closest('[data-show-graph],[data-r
   if(target.dataset.doc){state.activeDoc=target.dataset.doc;state.knowledgeMode='read';render();return;}
   if(target.dataset.modalDoc){state.activeDoc=target.dataset.modalDoc;closeModal();navigate('knowledge');return;}
   if(target.hasAttribute('data-show-graph')){state.knowledgeMode='graph';navigate('knowledge');window.scrollTo({top:0,behavior:'instant'});return;}
-  if(target.dataset.route){closeModal();navigate(target.dataset.route,target.closest('.dock')?target.getBoundingClientRect():null);return;}
+  if(target.dataset.route){closeModal();navigate(target.dataset.route,target.closest('.dock')?target:null);return;}
   if(target.dataset.filter){state.taskFilter=target.dataset.filter;render();return;}
   if(target.dataset.mode){state.knowledgeMode=target.dataset.mode;render();return;}
   if(target.dataset.modal){if(target.dataset.modal==='diff')showDiff();else if(target.dataset.modal==='connect')modal('<p>Подключение сервисов будет реализовано через персональные разрешения ClickUp, Outline и Slack. Этот прототип не запрашивает и не хранит токены.</p>','Подключить сервис');else modal('<p>В полноценном Hub здесь будет системный диалог выбора папки Unity-проекта и настройка установки AGENTS.md.</p>','Добавление проекта');return;}
@@ -192,7 +234,6 @@ function handleClick(e){const target=e.target.closest('[data-show-graph],[data-r
 document.addEventListener('click',handleClick);
 document.addEventListener('click',e=>{if(e.target.closest('#open-search'))openSearch();if(e.target.closest('#report-bug'))bugModal();if(e.target.closest('#brand-home'))navigate('home');});
 document.addEventListener('input',e=>{if(e.target.id==='task-search'){const caret=e.target.selectionStart;state.taskQuery=e.target.value;render();const el=byId('task-search');el.focus();el.setSelectionRange(caret,caret);}else if(e.target.id==='doc-search'){const caret=e.target.selectionStart;state.docQuery=e.target.value;render();const el=byId('doc-search');el.focus();el.setSelectionRange(caret,caret);}else if(e.target.id==='global-search-input'){state.searchQuery=e.target.value;searchResults();}});
-document.addEventListener('change',e=>{if(e.target.id==='prompt-type'){state.promptType=e.target.value;render();}else if(e.target.id==='prompt-task'){state.promptTask=e.target.value;render();}else if(e.target.dataset.promptDoc){e.target.checked?state.promptDocs.add(e.target.dataset.promptDoc):state.promptDocs.delete(e.target.dataset.promptDoc);render();}});
 function handleOverlayKeys(event){
   if (!state.modal && !state.searchOpen) return false;
   const root=byId('overlay-root');
@@ -214,12 +255,56 @@ function handleOverlayKeys(event){
 }
 document.addEventListener('keydown',e=>{if(byId('welcome').open)return;if(handleOverlayKeys(e))return;if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openSearch();}if(e.key==='Escape'){closeModal();}if(e.key==='Enter'&&e.target.closest('[data-task][role="button"]'))taskModal(e.target.dataset.task);if(e.key==='Enter'&&state.searchOpen&&e.target.id==='global-search-input'){const first=byId('global-search-results')?.querySelector('.search-result');first?.click();}});
 document.addEventListener('pointermove',event=>{
-  if(reduceMotion.matches||event.pointerType!=='mouse')return;
+  if(motionLevel()!==2||event.pointerType!=='mouse')return;
   const card=event.target.closest('.card[data-route]');
   if(!card)return;
   const rect=card.getBoundingClientRect();
   card.style.setProperty('--glow-x',event.clientX-rect.left+'px');
   card.style.setProperty('--glow-y',event.clientY-rect.top+'px');
+});
+function pulseControl(control){
+  if (motionLevel()!==2) return;
+  const pulse=control.querySelector('.control-pulse');
+  pulse.getAnimations().forEach(animation=>animation.cancel());
+  pulse.animate([
+    {scale:.85,opacity:0},
+    {scale:1.22,opacity:.85,offset:.24},
+    {scale:2.15,opacity:0}
+  ],{duration:500,easing:'cubic-bezier(.2,.65,.25,1)'});
+}
+document.addEventListener('change',event=>{
+  const input=event.target;
+  if (input.id==='welcome-preference') saveAppearance({welcome:input.checked});
+  if (input.dataset.promptDoc){
+    if (input.checked) state.promptDocs.add(input.dataset.promptDoc);
+    else state.promptDocs.delete(input.dataset.promptDoc);
+    byId('prompt-preview').textContent=promptText();
+  }
+  if (input.id==='prompt-type'){state.promptType=input.value;render();}
+  if (input.id==='prompt-task'){state.promptTask=input.value;render();}
+  const check=input.closest('.check-control');
+  if (check) pulseControl(check);
+});
+document.addEventListener('input',event=>{
+  const input=event.target;
+  if (input.id!=='motion-preference') return;
+  const value=Number(input.value);
+  const label=motionLabels[value];
+  saveAppearance({motion:value});
+  input.closest('.motion-options').dataset.step=value;
+  input.setAttribute('aria-valuetext',label);
+  byId('motion-current').textContent=label;
+  pulseControl(input.parentElement);
+});
+motionChanges.addEventListener('change',()=>{
+  const page=byId('page');
+  page.classList.remove('route-enter');
+  clearLiquid(page);
+  if (motionLevel()!==2){
+    document.querySelectorAll('.control-pulse').forEach(pulse=>{
+      pulse.getAnimations().forEach(animation=>animation.cancel());
+    });
+  }
 });
 render();
 setupWelcome();

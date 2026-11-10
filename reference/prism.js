@@ -189,7 +189,7 @@ function mountPrism(canvas) {
       }
     }
     const shimmer=Math.max(0,1-Math.abs((time%4900)-2900)/430);
-    if (glint && shimmer>0 && !reduceMotion.matches) {
+    if (glint && shimmer>0 && motionLevel()===2) {
       drawGlint(context,glint.x,glint.y,Math.min(28,size*.16),shimmer*shimmer*(.38+glint.spec*.48));
     }
     context.restore();
@@ -207,16 +207,18 @@ function mountPrism(canvas) {
     cancelAnimationFrame(frame);
     frame=0;
     lastFrame=0;
-    if (reduceMotion.matches) paint(1240);
+    if (motionLevel()!==2) paint(1240);
     else if (visible) frame=requestAnimationFrame(tick);
   };
-  const resize = new ResizeObserver(() => {
-    const rect=canvas.getBoundingClientRect();
-    width=rect.width;height=rect.height;
+  const resize = new ResizeObserver(([entry]) => {
+    ({width,height}=entry.contentRect);
+    if (!width || !height) return;
     const dpr=Math.min(devicePixelRatio||1,2);
-    canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);
+    const pixelWidth=Math.round(width*dpr),pixelHeight=Math.round(height*dpr);
+    if (canvas.width!==pixelWidth) canvas.width=pixelWidth;
+    if (canvas.height!==pixelHeight) canvas.height=pixelHeight;
     context.setTransform(dpr,0,0,dpr,0,0);
-    if (reduceMotion.matches) paint(1240);
+    paint(motionLevel()!==2 ? 1240 : performance.now());
   });
   resize.observe(canvas);
   const intersection=new IntersectionObserver(([entry])=>{visible=entry.isIntersecting;update();});
@@ -225,10 +227,10 @@ function mountPrism(canvas) {
   scene.addEventListener('pointermove',event=>{
     if (drag?.id===event.pointerId) {
       spinGoal=drag.spin-(event.clientX-drag.x)*.012;
-      if (reduceMotion.matches) { spin=spinGoal;paint(1240); }
+      if (motionLevel()!==2) { spin=spinGoal;paint(1240); }
       return;
     }
-    if (reduceMotion.matches) return;
+    if (motionLevel()!==2) return;
     const rect=scene.getBoundingClientRect();
     tx=(event.clientX-rect.left)/rect.width*2-1;
     ty=(event.clientY-rect.top)/rect.height*2-1;
@@ -246,7 +248,7 @@ function mountPrism(canvas) {
       drag=null;resumeAfter=performance.now()+1100;canvas.classList.remove('grabbing');
     },{signal});
   }
-  reduceMotion.addEventListener('change',update,{signal});
+  motionChanges.addEventListener('change',update,{signal});
   update();
   return ()=>{cancelAnimationFrame(frame);resize.disconnect();intersection.disconnect();controller.abort();};
 }

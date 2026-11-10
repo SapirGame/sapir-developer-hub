@@ -1,5 +1,33 @@
 
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+const appearanceKey = 'sapir-hub:appearance';
+const motionLabels = ['Без анимаций','Классические','Fluid'];
+const appearance = {welcome:true,motion:2};
+const motionChanges = new EventTarget();
+try {
+  const saved = JSON.parse(localStorage.getItem(appearanceKey));
+  if (typeof saved?.welcome==='boolean') appearance.welcome = saved.welcome;
+  if ([0,1,2].includes(saved?.motion)) appearance.motion = saved.motion;
+} catch { /* An unavailable or invalid preference keeps the defaults. */ }
+
+function motionLevel() {
+  return reduceMotion.matches ? 0 : appearance.motion;
+}
+
+function syncMotion() {
+  document.documentElement.dataset.motion = motionLevel();
+  motionChanges.dispatchEvent(new Event('change'));
+}
+
+function saveAppearance(change) {
+  Object.assign(appearance,change);
+  try { localStorage.setItem(appearanceKey,JSON.stringify(appearance)); } catch { /* Keep changes for this session. */ }
+  if ('motion' in change) syncMotion();
+}
+
+reduceMotion.addEventListener('change',syncMotion);
+syncMotion();
+
 let disposeGraph = () => {};
 const graphPositions = new Map();
 
@@ -65,7 +93,7 @@ function mountGraph(graph) {
   const updateMotion = () => {
     cancelAnimationFrame(frame);
     last = 0;
-    if (reduceMotion.matches) resize();
+    if (motionLevel()!==2) resize();
     else frame = requestAnimationFrame(tick);
   };
   const observer = new ResizeObserver(resize);
@@ -74,7 +102,7 @@ function mountGraph(graph) {
   for (const {button} of nodes) observer.observe(button);
   resize();
   updateMotion();
-  reduceMotion.addEventListener('change', updateMotion, {signal});
+  motionChanges.addEventListener('change', updateMotion, {signal});
 
   graph.querySelector('[data-reset-graph]').addEventListener('click', () => {
     for (const node of nodes) {
@@ -83,7 +111,7 @@ function mountGraph(graph) {
       node.anchor = {x:Number(x)/100,y:Number(y)/100};
       node.vx = node.vy = 0;
     }
-    if (reduceMotion.matches) resize();
+    if (motionLevel()!==2) resize();
   }, {signal});
   for (const node of nodes) {
     const {button} = node;
@@ -156,12 +184,13 @@ function setupWelcome() {
   };
   const dismiss = () => {
     if (!panel.open || panel.classList.contains('leaving')) return;
+    const level = motionLevel();
     const finish = () => {
       panel.close();
       panel.classList.remove('leaving');
       disposeIntro();
       shell.inert = false;
-      if (!trigger && !reduceMotion.matches) {
+      if (!trigger && level===2 && motionLevel()===2) {
         byId('page').animate([
           {opacity:.35},
           {opacity:1},
@@ -169,14 +198,14 @@ function setupWelcome() {
       }
       (trigger || byId('brand-home')).focus({preventScroll:true});
     };
-    if (reduceMotion.matches) finish();
+    if (level===0) finish();
     else {
       panel.classList.add('leaving');
-      setTimeout(finish, 340);
+      setTimeout(finish,level===1 ? 180 : 340);
     }
   };
   enter.addEventListener('click', dismiss);
   replay.addEventListener('click', () => show(replay));
   panel.addEventListener('cancel', event => {event.preventDefault(); dismiss();});
-  if (!initialView) show(null);
+  if (appearance.welcome && !initialView) show(null);
 }
